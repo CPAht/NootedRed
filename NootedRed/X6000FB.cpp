@@ -439,9 +439,9 @@ void X6000FB::processKext(KernelPatcher& patcher, size_t id, mach_vm_address_t s
     PANIC_COND(!patch.apply(patcher, slide, size), "X6000FB", "Failed to apply populateDeviceInfo patch");
 
     if (NRed::singleton().getAttributes().isRenoir()) {
-        const PenguinWizardry::MaskedLookupPatch patch{&kextRadeonX6000Framebuffer, kInitializeDmcubServices1Original,
+        const PenguinWizardry::MaskedLookupPatch patchDmcub1{&kextRadeonX6000Framebuffer, kInitializeDmcubServices1Original,
                                                        kInitializeDmcubServices1Patched, 1};
-        PANIC_COND(!patch.apply(patcher, slide, size), "X6000FB",
+        PANIC_COND(!patchDmcub1.apply(patcher, slide, size), "X6000FB",
                    "Failed to apply initializeDmcubServices family id patch");
         if (currentKernelVersion() <= MACOS_10_15_X) {
             const PenguinWizardry::MaskedLookupPatch patches[] = {
@@ -457,16 +457,16 @@ void X6000FB::processKext(KernelPatcher& patcher, size_t id, mach_vm_address_t s
                        "Failed to apply AmdDalDmcubService and AmdDalServices::initialize patches (10.15)");
         }
         else if (currentKernelVersion() >= MACOS_14_4) {
-            const PenguinWizardry::MaskedLookupPatch patch{&kextRadeonX6000Framebuffer,
+            const PenguinWizardry::MaskedLookupPatch patchDmcub21404{&kextRadeonX6000Framebuffer,
                                                            kInitializeDmcubServices2Original1404,
                                                            kInitializeDmcubServices2Patched1404, 1};
-            PANIC_COND(!patch.apply(patcher, slide, size), "X6000FB",
+            PANIC_COND(!patchDmcub21404.apply(patcher, slide, size), "X6000FB",
                        "Failed to apply initializeDmcubServices ASIC patch (14.4+)");
         }
         else {
-            const PenguinWizardry::MaskedLookupPatch patch{
+            const PenguinWizardry::MaskedLookupPatch patchDmcub2Legacy{
                 &kextRadeonX6000Framebuffer, kInitializeDmcubServices2Original, kInitializeDmcubServices2Patched, 1};
-            PANIC_COND(!patch.apply(patcher, slide, size), "X6000FB",
+            PANIC_COND(!patchDmcub2Legacy.apply(patcher, slide, size), "X6000FB",
                        "Failed to apply initializeDmcubServices ASIC patch");
         }
     }

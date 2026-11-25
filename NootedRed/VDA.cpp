@@ -192,7 +192,7 @@ void VDA::processPatcher()
         return;
     }
 
-    const char* modeName = this->hevcAllowed ?
+    [[maybe_unused]] const char* modeName = this->hevcAllowed ?
         (this->hevc10Allowed ? "AVC + HEVC 8/10-bit" : "AVC + 8-bit HEVC") : "AVC only";
 
     // The bridge reports its own readiness under the VCN tag; VDA only publishes the requested profile and
