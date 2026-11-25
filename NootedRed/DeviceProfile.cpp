@@ -70,23 +70,23 @@ namespace
     // roll-up at experimental.
     constexpr DeviceProfile::Profile kProfiles[] = {
         {"Renoir", 0x1636, DeviceProfile::kRenoir, DeviceProfile::kExperimental, kProfileMinVersion,
-         kProfileMaxVersion, {}, kVcn2MediaVcn0},
+         kProfileMaxVersion, {}, kVcn2MediaVcn0, {true}},
         {"Renoir/Green Sardine", 0x1638, DeviceProfile::kGreenSardine, DeviceProfile::kExperimental,
-         kProfileMinVersion, kProfileMaxVersion, {}, kVcn2MediaVcn0},
+         kProfileMinVersion, kProfileMaxVersion, {}, kVcn2MediaVcn0, {true}},
         {"Cezanne", 0x164C, DeviceProfile::kCezanne, DeviceProfile::kExperimental, kProfileMinVersion,
-         kProfileMaxVersion, {}, kVcn2MediaVcn0},
+         kProfileMaxVersion, {}, kVcn2MediaVcn0, {true}},
         {"Barcelo", 0x15E7, DeviceProfile::kBarcelo, DeviceProfile::kExperimental, kProfileMinVersion,
-         kProfileMaxVersion, {}, kVcn2MediaVcn0},
+         kProfileMaxVersion, {}, kVcn2MediaVcn0, {true}},
         {"Raven", 0x15DD, DeviceProfile::kRaven, DeviceProfile::kExperimental, kProfileMinVersion,
-         kProfileMaxVersion, {}, kVcn1Media},
+         kProfileMaxVersion, {}, kVcn1Media, {}},
         // 0x15D8 covers Raven2 and Picasso; NRed::hwLateInit() refines the distinction from devRevision.
         {"Raven2/Picasso", 0x15D8, DeviceProfile::kPicasso, DeviceProfile::kExperimental, kProfileMinVersion,
-         kProfileMaxVersion, {}, kVcn1Media},
+         kProfileMaxVersion, {}, kVcn1Media, {}},
     };
 
     constexpr const DeviceProfile::Profile kFallbackProfile = {
         "unknown/fallback", 0, DeviceProfile::kUnknown, DeviceProfile::kUnavailable, kProfileMinVersion,
-        kProfileMaxVersion, {}, {}};
+        kProfileMaxVersion, {}, {}, {}};
 
     constexpr size_t kProfileCount = sizeof(kProfiles) / sizeof(kProfiles[0]);
 
@@ -124,6 +124,21 @@ namespace
     constexpr auto mediaDisabled(const DeviceProfile::MediaPolicy& media) -> bool
     {
         return !media.hasUVD0 && !media.hasVCE && !media.hasVCN0;
+    }
+
+    // Unified memory stays limited to the Renoir family, the only one whose X5000 memory paths were checked.
+    constexpr auto unifiedMemoryOnRenoirFamily() -> bool
+    {
+        for (const auto& profile : kProfiles) {
+            if (!profile.memory.unifiedMemory) { continue; }
+            if (profile.family != DeviceProfile::kRenoir && profile.family != DeviceProfile::kGreenSardine
+                && profile.family != DeviceProfile::kCezanne && profile.family != DeviceProfile::kBarcelo)
+            {
+                return false;
+            }
+        }
+
+        return !kFallbackProfile.memory.unifiedMemory;
     }
 
     // Media enablement is limited to VCN 2.x profiles until a VCN 1.x path exists; the validated 0x1638
@@ -176,6 +191,7 @@ namespace
     static_assert(allVcnDataPresent(kProfiles),
                   "Every profile needs VCN data, H.264/HEVC decode and no AV1 before media can be enabled");
     static_assert(mediaDisabled(kFallbackProfile.media), "The fallback profile must not enable any media engine");
+    static_assert(unifiedMemoryOnRenoirFamily(), "Unified memory is limited to the Renoir family profiles");
 
 }    // namespace
 
@@ -249,7 +265,7 @@ void DeviceProfile::logCurrent()
     SYSLOG("DeviceProfile",
            "Compat: profile=\"%s\" family=%s level=%s device=0x%04X rev=0x%02X darwin=%u.%u "
            "graphics{dualQuad=%u hwInfo=%u rbPlus=%u numSE=%u} "
-           "media{gate=%u vcn=0x%04X fw=%s ring=0x%X fence=0x%X h264=%u hevc=%u av1=%u}",
+           "media{gate=%u vcn=0x%04X fw=%s ring=0x%X fence=0x%X h264=%u hevc=%u av1=%u} memory{uma=%u}",
            profile->name, familyName(profile->family), levelName(profile->level), static_cast<unsigned>(deviceID),
            static_cast<unsigned>(pciRevision), static_cast<unsigned>(version.major()),
            static_cast<unsigned>(version.minor()), static_cast<unsigned>(profile->graphics.conditionalDualQuad),
@@ -262,7 +278,8 @@ void DeviceProfile::logCurrent()
            static_cast<unsigned>(profile->media.vcnFenceSize),
            static_cast<unsigned>(profile->media.decode.h264),
            static_cast<unsigned>(profile->media.decode.hevc),
-           static_cast<unsigned>(profile->media.decode.av1));
+           static_cast<unsigned>(profile->media.decode.av1),
+           static_cast<unsigned>(profile->memory.unifiedMemory));
 
     auto& nred = NRed::singleton();
     nred.setProp32("NRedCompatDeviceID", deviceID);
@@ -270,4 +287,5 @@ void DeviceProfile::logCurrent()
     nred.setProp32("NRedCompatLevel", profile->level);
     nred.setProp32("NRedCompatNumShaderEngines", profile->graphics.numShaderEngines);
     nred.setProp32("NRedCompatVCNGeneration", profile->media.vcnGeneration);
+    nred.setProp32("NRedCompatUnifiedMemory", profile->memory.unifiedMemory);
 }
