@@ -165,7 +165,7 @@ private:
     static IOReturn      accelWaitForStamp(void* self, int stampIdx, UInt32 stamp, UInt32* statusOut);
     static OSMetaClassBase* safeMetaCast(const OSMetaClassBase* object, const OSMetaClass* target);
 
-    void drainVCN(const char* reason);
+    void drainVCN([[maybe_unused]] const char* reason);
     void triggerSelfHealingCooldown(const char* reason);
     bool trackContextStart(void* context);
     bool trackContextStop(void* context);
